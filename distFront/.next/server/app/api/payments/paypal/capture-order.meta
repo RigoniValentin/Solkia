@@ -1,0 +1,1 @@
+{"status":307,"headers":{"location":"http://localhost:3000/pagos/error","x-next-cache-tags":"_N_T_/layout,_N_T_/api/layout,_N_T_/api/payments/layout,_N_T_/api/payments/paypal/layout,_N_T_/api/payments/paypal/capture-order/layout,_N_T_/api/payments/paypal/capture-order/route,_N_T_/api/payments/paypal/capture-order"}}
