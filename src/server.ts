@@ -18,6 +18,9 @@ const FRONTEND_DIR = path.join(process.cwd(), "distFront");
 const FRONTEND_INTERNAL_PORT = Number(process.env.FRONTEND_INTERNAL_PORT || Number(PORT) + 1);
 let frontendProcess: ChildProcess | null = null;
 
+// Behind Nginx, so Express can trust forwarded client IP headers.
+app.set("trust proxy", 1);
+
 // Middleware
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(
