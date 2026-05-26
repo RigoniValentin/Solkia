@@ -44,7 +44,7 @@ app.get("/api/health", (_req, res) => {
 });
 
 async function mountFrontend() {
-  if (process.env.NODE_ENV !== "production") return;
+  if (process.env.NODE_ENV === "development") return;
 
   const standaloneServerPath = path.join(FRONTEND_DIR, "server.js");
 
