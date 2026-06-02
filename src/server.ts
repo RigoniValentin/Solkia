@@ -15,7 +15,7 @@ const app = express();
 const PORT = process.env.PORT || 3018;
 const MONGODB_URI = process.env.MONGODB_URI || "mongodb://localhost:27017/SolkiaDB";
 const FRONTEND_DIR = path.join(process.cwd(), "distFront");
-const FRONTEND_INTERNAL_PORT = Number(process.env.FRONTEND_INTERNAL_PORT || Number(PORT) + 1);
+const FRONTEND_INTERNAL_PORT = Number(process.env.FRONTEND_INTERNAL_PORT || Number(PORT) + 2);
 let frontendProcess: ChildProcess | null = null;
 
 // Behind Nginx, so Express can trust forwarded client IP headers.
