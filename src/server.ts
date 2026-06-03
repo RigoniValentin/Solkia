@@ -6,6 +6,7 @@ import dotenv from "dotenv";
 import { rateLimit } from "express-rate-limit";
 import fs from "fs";
 import http from "http";
+import net from "net";
 import path from "path";
 import { ChildProcess, spawn } from "child_process";
 
@@ -15,8 +16,8 @@ const app = express();
 const PORT = process.env.PORT || 3018;
 const MONGODB_URI = process.env.MONGODB_URI || "mongodb://localhost:27017/SolkiaDB";
 const FRONTEND_DIR = path.join(process.cwd(), "distFront");
-const FRONTEND_INTERNAL_PORT = Number(process.env.FRONTEND_INTERNAL_PORT || Number(PORT) + 2);
 let frontendProcess: ChildProcess | null = null;
+let frontendInternalPort = 0;
 
 // Behind Nginx, so Express can trust forwarded client IP headers.
 app.set("trust proxy", 1);
@@ -48,6 +49,7 @@ async function mountFrontend() {
   if (process.env.NODE_ENV === "development") return;
 
   const standaloneServerPath = path.join(FRONTEND_DIR, "server.js");
+  const preferredPort = Number(process.env.FRONTEND_INTERNAL_PORT || Number(PORT) + 2);
 
   if (!fs.existsSync(standaloneServerPath)) {
     console.warn(
@@ -56,12 +58,14 @@ async function mountFrontend() {
     return;
   }
 
+  frontendInternalPort = await findAvailablePort(preferredPort);
+
   frontendProcess = spawn(process.execPath, [standaloneServerPath], {
     cwd: FRONTEND_DIR,
     env: {
       ...process.env,
       NODE_ENV: "production",
-      PORT: String(FRONTEND_INTERNAL_PORT),
+      PORT: String(frontendInternalPort),
       HOSTNAME: "127.0.0.1",
       NEXTAUTH_URL:
         process.env.NEXTAUTH_URL ||
@@ -75,11 +79,36 @@ async function mountFrontend() {
     console.warn(`Frontend standalone finalizo con code=${code} signal=${signal}`);
   });
 
-  await waitForFrontend(FRONTEND_INTERNAL_PORT);
+  await waitForFrontend(frontendInternalPort);
 
   app.use("/_next/static", express.static(path.join(FRONTEND_DIR, ".next", "static")));
   app.use(express.static(path.join(FRONTEND_DIR, "public"), { index: false }));
   app.all("*", proxyToFrontend);
+}
+
+function findAvailablePort(startPort: number) {
+  return new Promise<number>((resolve, reject) => {
+    const tryPort = (port: number) => {
+      const server = net.createServer();
+
+      server.once("error", (error: NodeJS.ErrnoException) => {
+        if (error.code === "EADDRINUSE") {
+          tryPort(port + 1);
+          return;
+        }
+
+        reject(error);
+      });
+
+      server.once("listening", () => {
+        server.close(() => resolve(port));
+      });
+
+      server.listen(port, "127.0.0.1");
+    };
+
+    tryPort(startPort);
+  });
 }
 
 function waitForFrontend(port: number) {
@@ -111,7 +140,7 @@ function proxyToFrontend(req: express.Request, res: express.Response) {
   const proxyReq = http.request(
     {
       hostname: "127.0.0.1",
-      port: FRONTEND_INTERNAL_PORT,
+      port: frontendInternalPort,
       path: req.originalUrl,
       method: req.method,
       headers: {
